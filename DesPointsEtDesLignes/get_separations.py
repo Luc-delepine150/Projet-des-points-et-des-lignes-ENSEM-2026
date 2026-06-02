@@ -1,6 +1,7 @@
 from Geometrie import Point
 
 
+
 class TasMin():
     """
     classe modélisant un tas min 
@@ -115,11 +116,14 @@ def get_separations(e_zones : list[list[int]]) -> list[tuple[list[Point],set[int
     
 
     """
+
+    l'objectif de cette partie est d'approximer à 1 pixel près les limites de zones en un temps de calcul raisonnable  (ici O(n*log(n)) n étant le nombre de pixel)
+    
     principe du code de la propagation des zones :
 
     propagation des zones via une méthode inspiré de l'algorithme de Dijkstra
 
-    on utilise un tasMin pour propager où chaque élément est un tuple (point_d'origine, point_à_visitee)
+    on utilise une file de priorité (implémenté par un tasMin) pour propager où chaque élément est un tuple (point_d'origine, point_à_visitee)
     et où la valeur de ses élément est la distance entre le point_d'origine et le point_à_visitee
 
     à chaque itération de la boucle on regarde si le point que l'on visite a déjà été visitée auparavant,
@@ -132,7 +136,9 @@ def get_separations(e_zones : list[list[int]]) -> list[tuple[list[Point],set[int
         on retient ce point comme un point d'une séparation (un point limite)
         en l'ajoutant à un dictionnaire {cle = id_point : val = set(numéro des zones séparées par ce point)}  (ici rattachements)
 
-    en pratique le programe est un peut plus sofistique pour pour réduire son temps de calcul (sa complexité)
+    en pratique le programe est un peut plus sofistiqué pour pour réduire son temps de calcul lié aux points visité plusieurs fois
+    et réduire son impacte en mémoire (on ne retient pas directement les point mais plutôt leur id)
+    
     """ 
 
     while not prioritee.is_empty():
@@ -160,10 +166,45 @@ def get_separations(e_zones : list[list[int]]) -> list[tuple[list[Point],set[int
                             points.append(new_fin)
                             rattachements.append(set([zones[curr_debut.x][curr_debut.y]]))
     
+    
+    """
+    traitement du cas du moulin 
+    cas du moulin:
+    
+    1111l3333333
+    1111l3333333
+    1111llllllll
+    llllll444444
+    22222l444444
+    22222l444444
+
+    dans le cas du moulin des points limites de différentes séparations se rencontrent sans générer de point critique (pour notre mode de propagation)
+    donc on en créer un point critique virtuel, un des 4 points auquel envoie ces 4 points dans id_points 
+    """
+    id_points_moulin = {}
+    for pt in points:
+        if pt+Point(1,1) in id_points:
+            if len(rattachements[id_points[pt]]) == 2 and len(rattachements[id_points[pt+Point(1,1)]]) == 2 and rattachements[id_points[pt]]&rattachements[id_points[pt+Point(1,1)]] == set():
+                rattachements[id_points[pt]] = rattachements[id_points[pt]].copy()|rattachements[id_points[pt+Point(1,1)]].copy()|rattachements[id_points[pt+Point(1,0)]].copy()|rattachements[id_points[pt+Point(0,1)]].copy()
+                
+                id_points_moulin[pt+Point(1,1)] = id_points[pt+Point(1,1)]
+                id_points_moulin[pt+Point(1,0)] = id_points[pt+Point(1,0)]
+                id_points_moulin[pt+Point(0,1)] = id_points[pt+Point(0,1)]
+                
+                id_points[pt+Point(1,1)] = id_points[pt]
+                id_points[pt+Point(1,0)] = id_points[pt]
+                id_points[pt+Point(0,1)] = id_points[pt]
+
+    
     """
     dans un second temps on identifit les "points critiques", ce sont les point séparent 3 zones ou plus (= les pixels qui seraient réellement identifiés comme des points du tracé par un humain)
+    complexité linéaire
     """
     points_critiques = [pt for pt in range(len(rattachements)) if len(rattachements[pt]) > 2]
+
+    retourbis = [points[pt] for pt in range(len(rattachements)) if len(rattachements[pt]) > 2]
+
+
 
     """
     puis on les utilise pour déterminer les séparations:
@@ -177,10 +218,28 @@ def get_separations(e_zones : list[list[int]]) -> list[tuple[list[Point],set[int
 
 
     donc on détermine les séparation par des parcours des points limites de proche en proche délimités par les points critiques
+    
+    complexité linéaire
     """
     separations : list[tuple[list[any],dict[int]]] = []
+
+
     for critique in points_critiques:
         pile = [(critique,None)]
+
+
+        #gestion du cas du moulin
+        if points[critique]+Point(1,1) in id_points:
+            if critique == id_points[points[critique]+Point(1,1)] : 
+                
+                del id_points[points[critique]+Point(1,1)]
+                del id_points[points[critique]+Point(1,0)]
+                del id_points[points[critique]+Point(0,1)]
+                pile.append((id_points_moulin[points[critique]+Point(1,1)],(critique,None)))
+                pile.append((id_points_moulin[points[critique]+Point(1,0)],(critique,None)))
+                pile.append((id_points_moulin[points[critique]+Point(0,1)],(critique,None)))
+        #gestion du cas du moulin
+
         del id_points[points[critique]]
 
         while pile != []:
@@ -238,4 +297,4 @@ def get_separations(e_zones : list[list[int]]) -> list[tuple[list[Point],set[int
         
 
 
-    return  separations
+    return  separations,retourbis
