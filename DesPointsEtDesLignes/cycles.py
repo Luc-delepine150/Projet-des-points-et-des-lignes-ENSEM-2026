@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # CLASSE POINT
 # ==========================================================
 
-class Point:
+class Pointcycle:
     def __init__(self, idx, x, y, contour_id):
         self.idx = idx
         self.x = float(x)
@@ -60,7 +60,7 @@ def extract_points(binary):
         contour_points = []
         for p in contour:
             x, y = p[0]
-            pt = Point(point_index, x, y, contour_id)
+            pt = Pointcycle(point_index, x, y, contour_id)
             contour_points.append(pt)
             point_index += 1
 
