@@ -6,7 +6,7 @@ from gmsh_export import exportAllGmsh
 from Transcription_Image import transcription_image,etendre
 from Determination_zones import zones_depuis_image
 from get_separations import get_separations
-from utilitaires_main import simplifier_separations,nb_points_separations
+from utilitaires_main import simplifier_separations,nb_points_separations,affiche_scatter
 from traces import Ligne
 import cycles as cyc
 import Geometrie as geom
@@ -37,15 +37,19 @@ def run_program(image_path : str, gmsh_path : str, seuil_gris : int, extention_t
     
     
     zones1 = zones_depuis_image(image1, seuil=taille_min_zone)
+    n = max(map(max,zones1))
     
     
-    separations1 = get_separations(zones1)
-
+    separations1,bonus = get_separations(zones1)
+    lsty = [-pt.x for pt in bonus]
+    lstx = [pt.y for pt in bonus]
     simple_separations1 = simplifier_separations(separations1,epsilon)
     plt.title("avec "+str(nb_points_separations(simple_separations1))+" points (epsilon="+str(epsilon)+")")
 
     for separation in simple_separations1:
         plt.plot([pt.y for pt in separation[0]],[-pt.x for pt in separation[0]])
+    
+    plt.scatter(lstx,lsty, s=16)
     plt.show()
 
     traces = []
@@ -56,7 +60,7 @@ def run_program(image_path : str, gmsh_path : str, seuil_gris : int, extention_t
     
     gmsh_code = exportAllGmsh(traces)
 
-    with open("modele.geo", "w") as f:
+    with open(gmsh_path, "w") as f:
         f.write(gmsh_code)
 
     print("Programme exécuté !")
@@ -87,7 +91,7 @@ def lancer():
 
 def lancer_cycles():
   sommets,mat_adj=cyc.run(entry_image.get())
-  sommets=[geom.Point(pt[0],pt[1]) for pt in sommets]
+  sommets=[geom.Point(pt.x,pt.y) for pt in sommets]
   traces=[]
   for i in range(len(mat_adj)):
     for j in range(len(mat_adj)):
@@ -96,10 +100,12 @@ def lancer_cycles():
 
   gmsh_code = exportAllGmsh(traces)
   
-  with open("modele.geo", "w") as f:
+  with open(entry_gmsh.get(), "w") as f:
       f.write(gmsh_code)
   
   print("Programme exécuté !")
+
+
 
 def set_method():
   global method,method_win
